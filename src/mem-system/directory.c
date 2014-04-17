@@ -39,8 +39,13 @@
 struct dir_t *dir_create(char *name, int xsize, int ysize, int zsize, int num_nodes)
 {
 	struct dir_t *dir;
-	struct dir_entry_t *dir_entry;
+	
+	//Old dir_entry_t commented out by Ganesh
+	//struct dir_entry_t *dir_entry;
 
+	//New dir_entry_t added by Ganesh
+	struct new_dir_entry_t *dir_entry;
+	
 	int dir_size;
 	int dir_entry_size;
 
@@ -50,7 +55,10 @@ struct dir_t *dir_create(char *name, int xsize, int ysize, int zsize, int num_no
 	
 	/* Calculate sizes */
 	assert(num_nodes > 0);
-	dir_entry_size = sizeof(struct dir_entry_t) + (num_nodes + 7) / 8;
+	
+	//Commented out by Ganesh
+	//dir_entry_size = sizeof(struct dir_entry_t) + (num_nodes + 7) / 8;
+	dir_entry_size = sizeof(struct new_dir_entry_t) + (num_nodes + 7) / 8;
 	dir_size = sizeof(struct dir_t) + dir_entry_size * xsize * ysize * zsize;
 
 	/* Initialize */
@@ -71,6 +79,7 @@ struct dir_t *dir_create(char *name, int xsize, int ysize, int zsize, int num_no
 			{
 				dir_entry = dir_entry_get(dir, x, y, z);
 				dir_entry->owner = DIR_ENTRY_OWNER_NONE;
+				
 			}
 		}
 	}
@@ -99,7 +108,11 @@ struct dir_entry_t *dir_entry_get(struct dir_t *dir, int x, int y, int z)
 
 void dir_entry_dump_sharers(struct dir_t *dir, int x, int y, int z)
 {
-	struct dir_entry_t *dir_entry;
+	//commented out by Ganesh
+	//struct dir_entry_t *dir_entry;
+	
+	//Added by Ganesh
+	struct new_dir_entry_t *dir_entry;
 	int i;
 
 	dir_entry = dir_entry_get(dir, x, y, z);
@@ -110,10 +123,13 @@ void dir_entry_dump_sharers(struct dir_t *dir, int x, int y, int z)
 	mem_debug("}\n");
 }
 
-
 void dir_entry_set_owner(struct dir_t *dir, int x, int y, int z, int node)
 {
-	struct dir_entry_t *dir_entry;
+	//commented out by Ganesh
+	//struct dir_entry_t *dir_entry;
+
+	//Added by Ganesh
+	struct new_dir_entry_t *dir_entry;
 
 	/* Set owner */
 	assert(node == DIR_ENTRY_OWNER_NONE || IN_RANGE(node, 0, dir->num_nodes - 1));
@@ -124,7 +140,6 @@ void dir_entry_set_owner(struct dir_t *dir, int x, int y, int z, int node)
 	mem_trace("mem.set_owner dir=\"%s\" x=%d y=%d z=%d owner=%d\n",
 		dir->name, x, y, z, node);
 }
-
 
 void dir_entry_set_sharer(struct dir_t *dir, int x, int y, int z, int node)
 {
@@ -146,7 +161,32 @@ void dir_entry_set_sharer(struct dir_t *dir, int x, int y, int z, int node)
 		dir->name, x, y, z, node);
 }
 
+/* New function added by Ganesh */
+void dir_entry_set_sharer(struct dir_t *dir, int x, int y, int z, int node)
+{
+        struct new_dir_entry_t *dir_entry;
 
+        /* Nothing if sharer was already set */
+        assert(IN_RANGE(node, 0, dir->num_nodes - 1));
+        dir_entry = dir_entry_get(dir, x, y, z);
+        //if (dir_entry->sharer[node / 8] & (1 << (node % 8)))
+        //        return;
+	
+	if (search_in_tree(dir_entry->root_sharer, node))
+		return;
+
+        /* Set sharer */
+        //dir_entry->sharer[node / 8] |= 1 << (node % 8);
+        add_to_sharer_tree(dir_entry->root_sharer, node);
+	dir_entry->num_sharers++;
+        assert(dir_entry->num_sharers <= dir->num_nodes);
+
+        /* Debug */
+        mem_trace("mem.set_sharer dir=\"%s\" x=%d y=%d z=%d sharer=%d\n",
+                dir->name, x, y, z, node);
+}
+
+/* Modification ends */
 void dir_entry_clear_sharer(struct dir_t *dir, int x, int y, int z, int node)
 {
 	struct dir_entry_t *dir_entry;

@@ -38,6 +38,22 @@ struct dir_entry_t
 	unsigned char sharer[0];  /* Bitmap of sharers (must be last field) */
 };
 
+/* Added by Ganesh */
+
+struct sharer_tree_node_t{
+	int value; /* The current node */
+	int lc; /* Left child (-1 => No left child) */
+	int rc; /* Right child (-1 => No right child) */
+	int parent; /* Parent (-1 => No parent...but is this actually possible?) */
+}
+struct new_dir_entry_t{
+	int owner; /* Owner node */
+	int num_sharers; /* Number of sharers...is this really reqd? */
+	struct sharer_tree_node_t root_sharer; /* The root of the sharer tree */
+}
+
+/* Modification ends */	
+
 struct dir_t
 {
 	char *name;
@@ -80,6 +96,15 @@ struct dir_lock_t *dir_lock_get(struct dir_t *dir, int x, int y);
 int dir_entry_lock(struct dir_t *dir, int x, int y, int event, struct mod_stack_t *stack);
 void dir_entry_unlock(struct dir_t *dir, int x, int y);
 
+/* New functions added by Ganesh */
+void dir_entry_set_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  // Defined
+void dir_entry_clear_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);
+void dir_entry_clear_all_sharers_tree(struct dir_t *dir, int x, int y, int z);
+int dir_entry_is_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);
+int dir_entry_group_shared_or_owned_tree(struct dir_t *dir, int x, int y);
 
+//Tree functions
+int search_in_tree( struct sharer_tree_node root, int node );
+void add_to_sharer_tree( struct sharer_tree_node root, int node );
+/* Modification ends */
 #endif
-
