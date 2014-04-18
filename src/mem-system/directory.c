@@ -465,7 +465,7 @@ void dir_entry_unlock(struct dir_t *dir, int x, int y)
 /*		return NULL if flag = 0				*/
 /*		otherwise, create the node and return the new	*/
 /*		node's address.					*/
-struct sharer_tree_node *search_in_tree(struct sharer_tree_node_t *root, int node, int flag){
+struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node, int flag){
 	//Am I the reqd node?
 	if(root->value == node)
 		if(root->valid)
@@ -486,7 +486,7 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node_t *root, int nod
 
 		//if flag is set, set up a left child
 		else if(flag){
-			struct sharer_tree_node_t* new_node = (struct sharer_tree_node_t*) xcalloc(1, sizeof(sharer_tree_node_t));
+			struct sharer_tree_node* new_node = (struct sharer_tree_node*) xcalloc(1, sizeof(sharer_tree_node));
 			new_node->value = node;
 			new_node->valid = 1;
 			root->lc = new_node;
@@ -506,7 +506,7 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node_t *root, int nod
 		}
 		 //if flag is set, set up a left child
                 else if(flag){
-                        struct sharer_tree_node_t* new_node = (struct sharer_tree_node_t*) xcalloc(1, sizeof(sharer_tree_node_t));
+                        struct sharer_tree_node* new_node = (struct sharer_tree_node*) xcalloc(1, sizeof(sharer_tree_node));
                         new_node->value = node;
 			new_node->valid = 1;
 			root->rc = new_node;
