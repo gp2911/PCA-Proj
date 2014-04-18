@@ -47,12 +47,12 @@ struct sharer_tree_node{
 	struct sharer_tree_node *rc; /* Right child */
 	struct sharer_tree_node *parent; /* Parent */
 	int valid; /* Valid bit (-1 =>logically removed) */
-}
+};
 struct dir_entry_t{
 	int owner; /* Owner node */
 	int num_sharers; /* Number of sharers...is this really reqd? */
 	struct sharer_tree_node *root_sharer; /* The root of the sharer tree */
-}
+};
 
 /* Modification ends */	
 
@@ -108,9 +108,9 @@ int dir_entry_group_shared_or_owned_tree(struct dir_t *dir, int x, int y);  //De
 //Tree functions
 struct sharer_tree_node *search_in_tree( struct sharer_tree_node *root, int node , int flag);
 void add_to_sharer_tree( struct sharer_tree_node *root, int node );
-void remove_from_tree( struct sharer_tree_node *root, int node );
+void remove_from_sharer_tree( struct sharer_tree_node *root, int node );
 void remove_all_from_tree(struct sharer_tree_node *root);
-void cleanup_tree(struct sharer_tree_node *root);
+struct sharer_tree_node *cleanup_tree(struct sharer_tree_node *root);
 /* Modification ends */
 
 #endif
