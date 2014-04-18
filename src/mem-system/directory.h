@@ -30,26 +30,28 @@ struct dir_lock_t
 
 #define DIR_ENTRY_OWNER_NONE  (-1)
 #define DIR_ENTRY_VALID_OWNER(dir_entry)  ((dir_entry)->owner >= 0)
+/* Original definition...commented out by Ganesh */
 
-struct dir_entry_t
-{
-	int owner;  /* Node owning the block (-1 = No owner)*/
-	int num_sharers;  /* Number of 1s in next field */
-	unsigned char sharer[0];  /* Bitmap of sharers (must be last field) */
-};
+//struct dir_entry_t
+//{
+//	int owner;  /* Node owning the block (-1 = No owner)*/
+//	int num_sharers;  /* Number of 1s in next field */
+//	unsigned char sharer[0];  /* Bitmap of sharers (must be last field) */
+//};
 
 /* Added by Ganesh */
 
 struct sharer_tree_node_t{
 	int value; /* The current node */
-	int lc; /* Left child (-1 => No left child) */
-	int rc; /* Right child (-1 => No right child) */
-	int parent; /* Parent (-1 => No parent...but is this actually possible?) */
+	struct sharer_tree_node_t *lc; /* Left child */
+	struct sharer_tree_node_t *rc; /* Right child */
+	struct sharer_tree_node_t *parent; /* Parent */
+	int valid; /* Valid bit (-1 =>logically removed) */
 }
-struct new_dir_entry_t{
+struct dir_entry_t{
 	int owner; /* Owner node */
 	int num_sharers; /* Number of sharers...is this really reqd? */
-	struct sharer_tree_node_t root_sharer; /* The root of the sharer tree */
+	struct sharer_tree_node_t *root_sharer; /* The root of the sharer tree */
 }
 
 /* Modification ends */	
@@ -98,13 +100,17 @@ void dir_entry_unlock(struct dir_t *dir, int x, int y);
 
 /* New functions added by Ganesh */
 void dir_entry_set_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  // Defined
-void dir_entry_clear_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);
-void dir_entry_clear_all_sharers_tree(struct dir_t *dir, int x, int y, int z);
-int dir_entry_is_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);
-int dir_entry_group_shared_or_owned_tree(struct dir_t *dir, int x, int y);
+void dir_entry_clear_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  //Defined
+void dir_entry_clear_all_sharers_tree(struct dir_t *dir, int x, int y, int z);  //Defined
+int dir_entry_is_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  //Defined
+int dir_entry_group_shared_or_owned_tree(struct dir_t *dir, int x, int y);  //Defined
 
 //Tree functions
-int search_in_tree( struct sharer_tree_node root, int node );
-void add_to_sharer_tree( struct sharer_tree_node root, int node );
+struct sharer_tree_node *search_in_tree( struct sharer_tree_node *root, int node , int flag);
+void add_to_sharer_tree( struct sharer_tree_node *root, int node );
+void remove_from_tree( struct sharer_tree_node *root, int node );
+void remove_all_from_tree(struct sharer_tree_node *root);
+void cleanup_tree(struct sharer_tree_node *root);
 /* Modification ends */
+
 #endif
