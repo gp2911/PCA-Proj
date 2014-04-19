@@ -267,7 +267,7 @@ void dir_entry_clear_all_sharers(struct dir_t *dir, int x, int y, int z)
         dir_entry = dir_entry_get(dir, x, y, z);
         dir_entry->num_sharers = 0;
 
-	dir->entry->num_of_complete_invals++;
+	dir_entry->num_of_complete_invals++;
 	remove_all_from_tree(dir_entry->root_sharer);
 
         /* Debug */
@@ -471,8 +471,24 @@ void dir_entry_unlock(struct dir_t *dir, int x, int y)
 /*		otherwise, create the node and return the new	*/
 /*		node's address.					*/
 struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node, int flag){
+	//printf("search_in_tree : root = %p, node = %d, flag = %d\n", root, node, flag);
+	if(!root){
+		if(!flag)
+			return NULL;
+		if(flag){
+			struct sharer_tree_node* new_node = (struct sharer_tree_node *) xcalloc(1, sizeof(struct sharer_tree_node));
+                        new_node->value = node;
+                        new_node->valid = 1;
+                        root = new_node;
+                        root->lc = NULL;
+			root->rc = NULL;
+			root->parent = NULL;
+                        return new_node;
+		}
+	}
 	//Am I the reqd node?
 	if(root->value == node){
+	//	printf("search_in_tree : node found at %x\n", root);
 		if(root->valid)
 			return root;
 		else if(flag){
@@ -483,6 +499,7 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node,
 	
 	//Search in my left child if node < my_value
 	if(node < root->value){
+	//	printf("search_in_tree: moving left...\n");
 		if(root->lc){ 
 			struct sharer_tree_node *ret = search_in_tree(root->lc, node, flag);
 			if(ret)
@@ -504,6 +521,7 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node,
 
 	//Search in my right child if node > my_value
 	if(node > root->value){
+          //      printf("search_in_tree: moving right...\n");
 		if(root->rc){
 			struct sharer_tree_node *ret = search_in_tree(root->rc, node, flag);
 			if(ret)
