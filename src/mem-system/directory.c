@@ -81,7 +81,9 @@ struct dir_t *dir_create(char *name, int xsize, int ysize, int zsize, int num_no
 			{
 				dir_entry = dir_entry_get(dir, x, y, z);
 				dir_entry->owner = DIR_ENTRY_OWNER_NONE;
-				
+				dir_entry->num_of_sharer_adds = 0;
+				dir_entry->num_of_one_sharer_removes = 0;
+				dir_entry->num_of_complete_invals = 0;				
 			}
 		}
 	}
@@ -171,7 +173,8 @@ void dir_entry_set_sharer(struct dir_t *dir, int x, int y, int z, int node)
         dir_entry = dir_entry_get(dir, x, y, z);
         //if (dir_entry->sharer[node / 8] & (1 << (node % 8)))
         //        return;
-	
+		
+	dir_entry->num_of_sharer_adds++;
 	if (search_in_tree(dir_entry->root_sharer, node, 0))
 		return;
 
@@ -219,6 +222,7 @@ void dir_entry_clear_sharer(struct dir_t *dir, int x, int y, int z, int node)
         dir_entry = dir_entry_get(dir, x, y, z);
         assert(IN_RANGE(node, 0, dir->num_nodes - 1));
 
+	dir_entry->num_of_one_sharer_removes++;
 	if (! search_in_tree(dir_entry->root_sharer, node, 0))
 		return;
 
@@ -263,6 +267,7 @@ void dir_entry_clear_all_sharers(struct dir_t *dir, int x, int y, int z)
         dir_entry = dir_entry_get(dir, x, y, z);
         dir_entry->num_sharers = 0;
 
+	dir->entry->num_of_complete_invals++;
 	remove_all_from_tree(dir_entry->root_sharer);
 
         /* Debug */

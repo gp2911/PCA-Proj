@@ -52,6 +52,11 @@ struct dir_entry_t{
 	int owner; /* Owner node */
 	int num_sharers; /* Number of sharers...is this really reqd? */
 	struct sharer_tree_node *root_sharer; /* The root of the sharer tree */
+
+	//Logging variables
+	long long num_of_sharer_adds;
+	long long num_of_one_sharer_removes;
+	long long num_of_complete_invals;
 };
 
 /* Modification ends */	
