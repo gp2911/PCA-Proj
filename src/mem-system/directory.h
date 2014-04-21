@@ -40,17 +40,17 @@ struct dir_entry_t
 
 /* Added by Ganesh */
 
-struct sharer_tree_node_t{
+struct sharer_tree_node{
 	int value; /* The current node */
 	int lc; /* Left child (-1 => No left child) */
 	int rc; /* Right child (-1 => No right child) */
 	int parent; /* Parent (-1 => No parent...but is this actually possible?) */
-}
+};
 struct new_dir_entry_t{
 	int owner; /* Owner node */
 	int num_sharers; /* Number of sharers...is this really reqd? */
-	struct sharer_tree_node_t root_sharer; /* The root of the sharer tree */
-}
+	struct sharer_tree_node root_sharer; /* The root of the sharer tree */
+};
 
 /* Modification ends */	
 
