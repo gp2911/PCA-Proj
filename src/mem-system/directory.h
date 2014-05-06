@@ -20,6 +20,7 @@
 #ifndef MEM_SYSTEM_DIRECTORY_H
 #define MEM_SYSTEM_DIRECTORY_H
 
+#include "module.h"
 
 struct dir_lock_t
 {
@@ -42,17 +43,20 @@ struct dir_lock_t
 /* Added by Ganesh */
 
 struct sharer_tree_node{
-	int value; /* The current node */
-	struct sharer_tree_node *lc; /* Left child */
-	struct sharer_tree_node *rc; /* Right child */
-	struct sharer_tree_node *parent; /* Parent */
-	int valid; /* Valid bit (-1 =>logically removed) */
+	int value; // The current node 
+	struct sharer_tree_node *lc; // Left child 
+	struct sharer_tree_node *rc; // Right child 
+	struct sharer_tree_node *parent; // Parent 
+	int valid; // Valid bit (-1 =>logically removed) 
 };
+
 struct dir_entry_t{
-	int owner; /* Owner node */
+	int owner; /* Am I owner node ? */
 	int num_sharers; /* Number of sharers...is this really reqd? */
 	struct sharer_tree_node *root_sharer; /* The root of the sharer tree */
-
+//	struct mod_t *parent;
+//	struct mod_t *lc;
+//	struct mod_t *rc;	
 	//Logging variables
 	long long num_of_sharer_adds;
 	long long num_of_one_sharer_removes;
@@ -103,19 +107,22 @@ struct dir_lock_t *dir_lock_get(struct dir_t *dir, int x, int y);
 int dir_entry_lock(struct dir_t *dir, int x, int y, int event, struct mod_stack_t *stack);
 void dir_entry_unlock(struct dir_t *dir, int x, int y);
 
-/* New functions added by Ganesh */
+/* New functions added by Ganesh - commented out */
+/*
 void dir_entry_set_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  // Defined
 void dir_entry_clear_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  //Defined
 void dir_entry_clear_all_sharers_tree(struct dir_t *dir, int x, int y, int z);  //Defined
 int dir_entry_is_sharer_tree(struct dir_t *dir, int x, int y, int z, int node);  //Defined
 int dir_entry_group_shared_or_owned_tree(struct dir_t *dir, int x, int y);  //Defined
-
+*/
 //Tree functions
-struct sharer_tree_node *search_in_tree( struct sharer_tree_node *root, int node , int flag);
-void add_to_sharer_tree( struct sharer_tree_node *root, int node );
-void remove_from_sharer_tree( struct sharer_tree_node *root, int node );
-void remove_all_from_tree(struct sharer_tree_node *root);
-struct sharer_tree_node *cleanup_tree(struct sharer_tree_node *root);
+
+struct sharer_tree_node *search_in_tree( struct sharer_tree_node **root, int node , int flag);
+void add_to_sharer_tree( struct sharer_tree_node **root, int node );
+void remove_from_sharer_tree( struct sharer_tree_node **root, int node );
+void remove_all_from_tree(struct sharer_tree_node **root);
+struct sharer_tree_node *cleanup_tree(struct sharer_tree_node **root);
+
 /* Modification ends */
 
 #endif

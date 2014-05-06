@@ -1432,13 +1432,13 @@ void mod_handler_nmoesi_evict(int event, void *data)
 			}
 			else
 			{
-				fatal("%s: Invalid cache block state: %d\n", __FUNCTION__, 
+				fatal("%s: Invalid cache block state 1: %d\n", __FUNCTION__, 
 					stack->state);
 			}
 		}
 		else 
 		{
-			fatal("%s: Invalid cache block state: %d\n", __FUNCTION__, 
+			fatal("%s: Invalid cache block state 2: %d\n", __FUNCTION__, 
 				stack->state);
 		}
 
@@ -1509,13 +1509,13 @@ void mod_handler_nmoesi_evict(int event, void *data)
 			}
 			else
 			{
-				fatal("%s: Invalid cache block state: %d\n", __FUNCTION__, 
+				fatal("%s: Invalid cache block state 3: %d\n", __FUNCTION__, 
 					stack->state);
 			}
 		}
 		else 
 		{
-			fatal("%s: Invalid cache block state: %d\n", __FUNCTION__, 
+			fatal("%s: Invalid cache block state 4: %d\n", __FUNCTION__, 
 				stack->state);
 		}
 
@@ -1891,6 +1891,7 @@ void mod_handler_nmoesi_read_request(int event, void *data)
 			if (dir_entry_tag < stack->addr || dir_entry_tag >= stack->addr + mod->block_size)
 				continue;
 			dir_entry = dir_entry_get(dir, stack->set, stack->way, z);
+			printf("nmoesi_protocol.c --> 1\n");
 			dir_entry_set_sharer(dir, stack->set, stack->way, z, mod->low_net_node->index);
 			if (dir_entry->num_sharers > 1 || stack->nc_write || stack->shared)
 				shared = 1;
@@ -2158,7 +2159,7 @@ void mod_handler_nmoesi_read_request(int event, void *data)
 				}
 				else 
 				{
-					fatal("Invalid cache block state: %d\n", stack->state);
+					fatal("Invalid cache block state 5: %d\n", stack->state);
 				}
 
 				/* Set block to shared */
@@ -2399,7 +2400,7 @@ void mod_handler_nmoesi_write_request(int event, void *data)
 		}
 		else 
 		{
-			fatal("Invalid cache block state: %d\n", stack->state);
+			fatal("Invalid cache block state 6: %d\n", stack->state);
 		}
 
 		if (stack->state != cache_block_invalid)
@@ -2445,9 +2446,20 @@ void mod_handler_nmoesi_write_request(int event, void *data)
 			assert(dir_entry_tag < stack->tag + target_mod->block_size);
 			if (dir_entry_tag < stack->addr || dir_entry_tag >= stack->addr + mod->block_size)
 				continue;
+			printf("nmoesi_protocol.c --> 2");
 			dir_entry = dir_entry_get(dir, stack->set, stack->way, z);
+//			if(dir_entry->root_sharer == NULL)
+//				dir_entry->num_sharers = 0;
+			if(dir_entry->num_sharers)
+				printf("%p : Before setting sharer: %d : { %d }\n", dir_entry, dir_entry->num_sharers, dir_entry->root_sharer->value);
+			else
+				printf("%p : Before setting sharer: %d \n", dir_entry, dir_entry->num_sharers);
 			dir_entry_set_sharer(dir, stack->set, stack->way, z, mod->low_net_node->index);
 			dir_entry_set_owner(dir, stack->set, stack->way, z, mod->low_net_node->index);
+			if (dir_entry->num_sharers != 1){
+				printf("Error! No. of sharers = %d\n", dir_entry->num_sharers);
+				fflush(stdout);
+			}
 			assert(dir_entry->num_sharers == 1);
 		}
 
@@ -2536,7 +2548,7 @@ void mod_handler_nmoesi_write_request(int event, void *data)
 		}
 		else 
 		{
-			fatal("Invalid cache block state: %d\n", stack->state);
+			fatal("Invalid cache block state 7: %d\n", stack->state);
 		}
 
 		esim_schedule_event(EV_MOD_NMOESI_WRITE_REQUEST_DOWNUP_FINISH, stack, 0);
@@ -2725,6 +2737,14 @@ void mod_handler_nmoesi_invalidate(int event, void *data)
 			dir_entry_tag = stack->tag + z * mod->sub_block_size;
 			assert(dir_entry_tag < stack->tag + mod->block_size);
 			dir_entry = dir_entry_get(dir, stack->set, stack->way, z);
+			if(stack->except_mod){
+				printf("Invalidating all entries of %p except %s...\n", dir_entry, stack->except_mod->name);
+				fflush(stdout);
+			}
+			else{
+				printf("Invalidating all entries of %p ...\n", dir_entry);
+				fflush(stdout);
+			}
 			for (i = 0; i < dir->num_nodes; i++)
 			{
 				struct net_node_t *node;

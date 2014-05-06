@@ -433,6 +433,7 @@ void mem_system_command_handler(int event, void *data)
 					__FUNCTION__, sharer->name, mod->name, command_line);
 
 			/* Set sharer */
+			printf("command.c\n");
 			dir_entry_set_sharer(mod->dir, set, way, sub_block, sharer->low_net_node->index);
 		}
 	}

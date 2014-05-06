@@ -24,22 +24,23 @@
 #include <lib/mhandle/mhandle.h>
 #include <lib/util/misc.h>
 #include <lib/util/debug.h>
-
+#include <stdio.h>
+#include <stdlib.h>
 #include "directory.h"
 #include "mem-system.h"
 #include "mod-stack.h"
 
 
-#define DIR_ENTRY_SHARERS_SIZE ((dir->num_nodes + 7) / 8)
-#define DIR_ENTRY_SIZE (sizeof(struct dir_entry_t) + DIR_ENTRY_SHARERS_SIZE)
-#define DIR_ENTRY(X, Y, Z) ((struct dir_entry_t *) (((void *) &dir->data) + DIR_ENTRY_SIZE * \
+#define OLD_DIR_ENTRY_SHARERS_SIZE ((dir->num_nodes + 7) / 8)
+#define OLD_DIR_ENTRY_SIZE (sizeof(struct dir_entry_t) + DIR_ENTRY_SHARERS_SIZE)
+#define OLD_DIR_ENTRY(X, Y, Z) ((struct dir_entry_t *) (((void *) &dir->data) + DIR_ENTRY_SIZE * \
 	((X) * dir->ysize * dir->zsize + (Y) * dir->zsize + (Z))))
 
 
 /* New #defs added by Ganesh */
-#define NEW_DIR_ENTRY_SHARERS_SIZE ((dir->num_nodes + 7) / 8)
-#define NEW_DIR_ENTRY_SIZE (sizeof(struct new_dir_entry_t) + NEW_DIR_ENTRY_SHARERS_SIZE)
-#define NEW_DIR_ENTRY(X, Y, Z) ((struct new_dir_entry_t *) (((void *) &dir->data) + NEW_DIR_ENTRY_SIZE * \
+#define DIR_ENTRY_SHARERS_SIZE sizeof(struct sharer_tree_node)
+#define DIR_ENTRY_SIZE sizeof(struct dir_entry_t) + (sizeof(struct dir_entry_t) + DIR_ENTRY_SHARERS_SIZE)
+#define DIR_ENTRY(X, Y, Z) ((struct dir_entry_t *) (((void *) &dir->data) + DIR_ENTRY_SIZE * \
         ((X) * dir->ysize * dir->zsize + (Y) * dir->zsize + (Z))))
 /* Modification ends */
 
@@ -60,7 +61,9 @@ struct dir_t *dir_create(char *name, int xsize, int ysize, int zsize, int num_no
 	/* Calculate sizes */
 	assert(num_nodes > 0);
 	
-	dir_entry_size = sizeof(struct dir_entry_t) + (num_nodes + 7) / 8;
+	// old definition - commented out by Ganesh
+	//dir_entry_size = sizeof(struct dir_entry_t) + (num_nodes + 7) / 8;
+	dir_entry_size = sizeof(struct dir_entry_t) + sizeof(struct sharer_tree_node);
 	dir_size = sizeof(struct dir_t) + dir_entry_size * xsize * ysize * zsize;
 
 	/* Initialize */
@@ -83,7 +86,13 @@ struct dir_t *dir_create(char *name, int xsize, int ysize, int zsize, int num_no
 				dir_entry->owner = DIR_ENTRY_OWNER_NONE;
 				dir_entry->num_of_sharer_adds = 0;
 				dir_entry->num_of_one_sharer_removes = 0;
-				dir_entry->num_of_complete_invals = 0;				
+				dir_entry->num_of_complete_invals = 0;			
+				dir_entry->num_sharers = 0;
+				//printf("SETTING ROOT_SHARER OF %p TO NULL\n", dir_entry);
+				dir_entry->root_sharer = NULL;
+//				dir_entry->parent = NULL;
+//				dir_entry->lc = NULL;
+//				dir_entry->rc = NULL;
 			}
 		}
 	}
@@ -166,23 +175,31 @@ void dir_entry_set_sharer(struct dir_t *dir, int x, int y, int z, int node)
 /* New function added by Ganesh */
 void dir_entry_set_sharer(struct dir_t *dir, int x, int y, int z, int node)
 {
-        struct dir_entry_t *dir_entry;
-
-        /* Nothing if sharer was already set */
-        assert(IN_RANGE(node, 0, dir->num_nodes - 1));
-        dir_entry = dir_entry_get(dir, x, y, z);
-        //if (dir_entry->sharer[node / 8] & (1 << (node % 8)))
-        //        return;
+	printf("-------------> dir_entry_set_sharer called.\n");
+//	fflush(stdout);
+    struct dir_entry_t *dir_entry;
+    /* Nothing if sharer was already set */
+    assert(IN_RANGE(node, 0, dir->num_nodes - 1));
+    dir_entry = dir_entry_get(dir, x, y, z);
+    //if (dir_entry->sharer[node / 8] & (1 << (node % 8)))
+    //        return;
 		
 	dir_entry->num_of_sharer_adds++;
-	if (search_in_tree(dir_entry->root_sharer, node, 0))
+	
+	if (search_in_tree(&(dir_entry->root_sharer), node, 0))
 		return;
 
         /* Set sharer */
         //dir_entry->sharer[node / 8] |= 1 << (node % 8);
-        add_to_sharer_tree(dir_entry->root_sharer, node);
-	dir_entry->num_sharers++;
-        assert(dir_entry->num_sharers <= dir->num_nodes);
+        add_to_sharer_tree(&(dir_entry->root_sharer), node);
+		printf("Increasing num_sharers of %p...\n", dir_entry);
+		dir_entry->num_sharers++;
+		printf("Root sharer of %p is now %p...\n", dir_entry, dir_entry->root_sharer);
+        
+	assert(dir_entry->num_sharers <= dir->num_nodes);	
+
+	printf("set_sharer : %p, %d\n", dir_entry, node);
+	fflush(stdout);
 
         /* Debug */
         mem_trace("mem.set_sharer dir=\"%s\" x=%d y=%d z=%d sharer=%d\n",
@@ -216,21 +233,31 @@ void dir_entry_clear_sharer(struct dir_t *dir, int x, int y, int z, int node)
 /* New Function added by Ganesh */
 void dir_entry_clear_sharer(struct dir_t *dir, int x, int y, int z, int node)
 {
+//	fflush(stdout);
         struct dir_entry_t *dir_entry;
 
         /* Nothing if sharer is not set */
         dir_entry = dir_entry_get(dir, x, y, z);
+			printf("-------------> dir_entry_clear_sharer called on %p.\n", dir_entry);
+
         assert(IN_RANGE(node, 0, dir->num_nodes - 1));
 
-	dir_entry->num_of_one_sharer_removes++;
-	if (! search_in_tree(dir_entry->root_sharer, node, 0))
+		dir_entry->num_of_one_sharer_removes++;
+
+	if (! search_in_tree(&(dir_entry->root_sharer), node, 0))
 		return;
 
         /* Clear sharer */
         
-	remove_from_sharer_tree(dir_entry->root_sharer, node);
+	remove_from_sharer_tree(&(dir_entry->root_sharer), node);
 	assert(dir_entry->num_sharers > 0);
-        dir_entry->num_sharers--;
+	printf("reducing num_sharers of %p...\n", dir_entry);
+    	dir_entry->num_sharers--;
+	
+//	if(dir_entry->root_sharer == NULL)
+//		dir_entry->num_sharers = 0;	
+	printf("clear_sharer : %p, %d\n", dir_entry, node);
+        fflush(stdout);
 
         /* Debug */
         mem_trace("mem.clear_sharer dir=\"%s\" x=%d y=%d z=%d sharer=%d\n",
@@ -260,19 +287,27 @@ void dir_entry_clear_all_sharers(struct dir_t *dir, int x, int y, int z)
 /* New function added by Ganesh */
 void dir_entry_clear_all_sharers(struct dir_t *dir, int x, int y, int z)
 {
+//	printf("-------------> dir_entry_clear_all_sharers called.\n");
+//	fflush(stdout);
         struct dir_entry_t *dir_entry;
         //int i;
 
         /* Clear sharers */
         dir_entry = dir_entry_get(dir, x, y, z);
-        dir_entry->num_sharers = 0;
+		
+		dir_entry->num_of_complete_invals++;
+		printf("Setting num_sharers of %p to 0", dir_entry);
+		dir_entry->num_sharers = 0;
 
-	dir_entry->num_of_complete_invals++;
-	remove_all_from_tree(dir_entry->root_sharer);
+		remove_all_from_tree(&(dir_entry->root_sharer));
 
         /* Debug */
         mem_trace("mem.clear_all_sharers dir=\"%s\" x=%d y=%d z=%d\n",
                 dir->name, x, y, z);
+	
+	printf("clear_all_sharers : %p", dir_entry);
+        fflush(stdout);
+
 }
 
 /*Modification ends */
@@ -282,6 +317,7 @@ void dir_entry_clear_all_sharers(struct dir_t *dir, int x, int y, int z)
 int dir_entry_is_sharer(struct dir_t *dir, int x, int y, int z, int node)
 {
 	struct dir_entry_t *dir_entry;
+
 
 	assert(IN_RANGE(node, 0, dir->num_nodes - 1));
 	dir_entry = dir_entry_get(dir, x, y, z);
@@ -297,7 +333,7 @@ int dir_entry_is_sharer(struct dir_t *dir, int x, int y, int z, int node)
         assert(IN_RANGE(node, 0, dir->num_nodes - 1));
         dir_entry = dir_entry_get(dir, x, y, z);
 	
-	if(search_in_tree(dir_entry->root_sharer, node, 0))
+	if(search_in_tree(&(dir_entry->root_sharer), node, 0))
 		return 1;
 	else
 		return 0;
@@ -470,20 +506,26 @@ void dir_entry_unlock(struct dir_t *dir, int x, int y)
 /*		return NULL if flag = 0				*/
 /*		otherwise, create the node and return the new	*/
 /*		node's address.					*/
-struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node, int flag){
-	//printf("search_in_tree : root = %p, node = %d, flag = %d\n", root, node, flag);
+struct sharer_tree_node *search_in_tree(struct sharer_tree_node **root_ptr, int node, int flag){
+	struct sharer_tree_node *root = *root_ptr;
+	printf("search_in_tree : root_ptr = %p, root = %p, node = %d, flag = %d\n",root_ptr, root, node, flag);
 	if(!root){
-		if(!flag)
+		printf("search_in_tree: no root found\n");
+		if(flag == 0)
+			//flag = 0 => return NULL
 			return NULL;
-		if(flag){
-			struct sharer_tree_node* new_node = (struct sharer_tree_node *) xcalloc(1, sizeof(struct sharer_tree_node));
-                        new_node->value = node;
-                        new_node->valid = 1;
-                        root = new_node;
-                        root->lc = NULL;
+		else{
+			//flag = 1 => create a new node and put it as root_sharer
+			printf("flag = 1...creating root\n");
+			root = (struct sharer_tree_node *) xcalloc(1, sizeof(struct sharer_tree_node));
+			printf("root created at %p\n", root);
+            root->value = node;
+            root->valid = 1;
+            root->lc = NULL;
 			root->rc = NULL;
 			root->parent = NULL;
-                        return new_node;
+			printf("returning %p...\n", root);
+            return root;
 		}
 	}
 	//Am I the reqd node?
@@ -500,8 +542,8 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node,
 	//Search in my left child if node < my_value
 	if(node < root->value){
 	//	printf("search_in_tree: moving left...\n");
-		if(root->lc){ 
-			struct sharer_tree_node *ret = search_in_tree(root->lc, node, flag);
+		if(root->lc){
+			struct sharer_tree_node *ret = search_in_tree(&(root->lc), node, flag);
 			if(ret)
 				return ret;
 		}
@@ -523,16 +565,16 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node,
 	if(node > root->value){
           //      printf("search_in_tree: moving right...\n");
 		if(root->rc){
-			struct sharer_tree_node *ret = search_in_tree(root->rc, node, flag);
+			struct sharer_tree_node *ret = search_in_tree(&(root->rc), node, flag);
 			if(ret)
 				return ret;
 		}
-		 //if flag is set, set up a left child
+		 //if flag is set, set up a right child
                 else if(flag){
                         struct sharer_tree_node* new_node = (struct sharer_tree_node*) xcalloc(1, sizeof(struct sharer_tree_node));
                         new_node->value = node;
-			new_node->valid = 1;
-			root->rc = new_node;
+						 new_node->valid = 1;
+						 root->rc = new_node;
                         new_node->parent = root;
                         new_node->lc = NULL;
                         new_node->rc = NULL;
@@ -546,25 +588,32 @@ struct sharer_tree_node *search_in_tree(struct sharer_tree_node *root, int node,
 
 /*add_to_sharer_tree : */
 /*	Add to tree rooted at root a new node with value=node	*/
-void add_to_sharer_tree(struct sharer_tree_node *root, int node){
-	search_in_tree(root, node, 1);
+void add_to_sharer_tree(struct sharer_tree_node **root, int node){
+	printf("calling search_in_tree with &root = %p\n", root);
+	if(*root == NULL){
+		(*root) = search_in_tree(root, node, 1);
+		printf("new root = %p\n", *root);
+	}
+	else
+		search_in_tree(root, node, 1);
 	return;
 }
 	
 /* remove_from_sharer_tree: */
 /*	Remove from the tree a node with value=node.		*/
-void remove_from_sharer_tree(struct sharer_tree_node *root, int node){
+void remove_from_sharer_tree(struct sharer_tree_node **root, int node){
 	struct sharer_tree_node *my_node = search_in_tree(root, node, 0);
 	my_node->valid = 0;
 }
 
 /*remove_all_from_tree: */
 /*	Remove all nodes from the tree rooted at root.		*/
-void remove_all_from_tree(struct sharer_tree_node *root){
+void remove_all_from_tree(struct sharer_tree_node **root_ptr){
+	struct sharer_tree_node *root = *root_ptr;
 	if(root->lc)
-		remove_all_from_tree(root->lc);
+		remove_all_from_tree(&(root->lc));
 	if(root->rc)
-		remove_all_from_tree(root->rc);
+		remove_all_from_tree(&(root->rc));
 	free(root->lc);
 	free(root->rc);
 	free(root->parent);
@@ -574,45 +623,47 @@ void remove_all_from_tree(struct sharer_tree_node *root){
 /*	return the address of the minimum node in tree rooted	*/
 /*	at root. 						*/
 /*	Auxillary function invisible through directory.h	*/
-struct sharer_tree_node *find_min(struct sharer_tree_node *root){
-	struct sharer_tree_node *curr_node = root;
+struct sharer_tree_node *find_min(struct sharer_tree_node **root){
+	struct sharer_tree_node *curr_node = *root;
 	while(curr_node->lc)
 		curr_node = curr_node->lc;
 	return curr_node;
 }
 
-void replace_node_in_parent(struct sharer_tree_node *root, struct sharer_tree_node *new_val){
-	if(root->parent){
-		if(root == root->parent->lc)
-			root->parent->lc = new_val;
+void replace_node_in_parent(struct sharer_tree_node **root, struct sharer_tree_node **new_val_ptr){
+	struct sharer_tree_node *new_val = *new_val_ptr;
+	if((*root)->parent){
+		if((*root) == (*root)->parent->lc)
+			(*root)->parent->lc = new_val;
 		else
-			root->parent->rc = new_val;
+			(*root)->parent->rc = new_val;
 	}
 	if(new_val)
-		new_val->parent = root->parent;
+		new_val->parent = (*root)->parent;
 }
 
 /* physical_delete_node:	*/
 /*	physically delete node from memory,			*/
 /*	returns the new root for the subtree rooted at node.	*/
-struct sharer_tree_node *physical_delete_node(struct sharer_tree_node *node){
+struct sharer_tree_node *physical_delete_node(struct sharer_tree_node **node_ptr){
 	struct sharer_tree_node *ret;
+	struct sharer_tree_node *node = *node_ptr;
 	if(node->lc && node->rc){
-		struct sharer_tree_node *succ = find_min(node->rc);
+		struct sharer_tree_node *succ = find_min(&(node->rc));
 		node->value = succ->value;
-		physical_delete_node(succ);
+		physical_delete_node(&succ);
 		return node;
 	}
 	else if(node->lc){
-		replace_node_in_parent(node, node->lc);
+		replace_node_in_parent(&node, &node->lc);
 		ret = node->lc;
 	}
 	else if(node->rc){
-		replace_node_in_parent(node, node->rc);
+		replace_node_in_parent(&node, &node->rc);
 		ret = node->rc;
 	}
 	else{
-		replace_node_in_parent(node, NULL);
+		replace_node_in_parent(&node, NULL);
 		ret = NULL;
 	}
 	free(node->lc);
@@ -626,13 +677,14 @@ struct sharer_tree_node *physical_delete_node(struct sharer_tree_node *node){
 /* cleanup_tree: */
 /*	Do the actual physical cleanup of tree.			*/
 /*	Returns the new root of the tree.			*/
-struct sharer_tree_node *cleanup_tree(struct sharer_tree_node *root){
+struct sharer_tree_node *cleanup_tree(struct sharer_tree_node **root_ptr){
+	struct sharer_tree_node *root = *root_ptr;
 	if(root->lc)
-		cleanup_tree(root->lc);
+		cleanup_tree(&root->lc);
 	if(root->rc)
-		cleanup_tree(root->rc);
+		cleanup_tree(&root->rc);
 	if(!root->valid)
-		return physical_delete_node(root);
+		return physical_delete_node(&root);
 	else 
 		return root;
 }	

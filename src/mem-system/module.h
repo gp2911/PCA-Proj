@@ -231,6 +231,13 @@ struct mod_t
 	long long no_retry_write_hits;
 	long long no_retry_nc_writes;
 	long long no_retry_nc_write_hits;
+
+	/* Added by Ganesh : Logging */
+/*
+	long long num_sharer_adds;
+        long long num_one_sharer_removes;
+        long long num_complete_invals;
+*/
 };
 
 struct mod_t *mod_create(char *name, enum mod_kind_t kind, int num_ports,

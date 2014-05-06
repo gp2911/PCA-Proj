@@ -1,1 +1,6 @@
-Finish defining functions in directory.c
+Go through directory.c once and check all functions
+Error on running fft:
+
+fatal: mod_handler_nmoesi_evict: Invalid cache block state: 0
+
+Check where this is coming from.

@@ -33,6 +33,9 @@
 #include "module.h"
 #include "nmoesi-protocol.h"
 
+/*Added by Ganesh */
+#include "directory.h"
+
 
 /*
  * Global Variables
@@ -50,8 +53,53 @@ struct mem_system_t *mem_system;
 
 char *mem_report_file_name = "";
 
+/* Added by Ganesh */
+long long get_sharer_adds(struct mod_t *mod){
+	struct dir_t *dir = mod->dir;
+	int x, y, z;
+	long long total_sharer_adds = 0;
+	for (x = 0; x < dir->xsize; x++){
+		for (y = 0; y < dir->ysize; y++){
+			for (z = 0; z < dir->zsize; z++){
+				struct dir_entry_t *dir_entry = dir_entry_get(dir, x, y, z);
+				total_sharer_adds += dir_entry->num_of_sharer_adds;
+			}
+		}
+	}
+	return total_sharer_adds;
+}
 
+long long get_one_sharer_removes(struct mod_t *mod){
+	struct dir_t *dir = mod->dir;
+	int x, y, z;
+	long long total_one_sharer_removes = 0;
+	for (x = 0; x < dir->xsize; x++){
+		for (y = 0; y < dir->ysize; y++){
+			for (z = 0; z < dir->zsize; z++){
+				struct dir_entry_t *dir_entry = dir_entry_get(dir, x, y, z);
+				total_one_sharer_removes += dir_entry->num_of_one_sharer_removes;
+			}
+		}
+	}
+	return total_one_sharer_removes;
+}
 
+long long get_complete_invals(struct mod_t *mod){
+	struct dir_t *dir = mod->dir;
+	int x, y, z;
+	long long total_complete_invals = 0;
+	for (x = 0; x < dir->xsize; x++){
+		for (y = 0; y < dir->ysize; y++){
+			for (z = 0; z < dir->zsize; z++){
+				struct dir_entry_t *dir_entry = dir_entry_get(dir, x, y, z);
+				total_complete_invals += dir_entry->num_of_complete_invals;
+			}
+		}
+	}
+	return total_complete_invals;
+}
+
+/* Modification ends */
 /*
  * Memory System Object
  */
@@ -425,7 +473,16 @@ void mem_system_dump_report(void)
 		fprintf(f, "NoRetryNCWriteHits = %lld\n", mod->no_retry_nc_write_hits);
 		fprintf(f, "NoRetryNCWriteMisses = %lld\n", mod->no_retry_nc_writes
 			- mod->no_retry_nc_write_hits);
+		
+		/* Added by Ganesh */
 		fprintf(f, "\n\n");
+		fprintf(f, "===================================================My Stats===================================================\n");
+		fprintf(f, "Total number of sharer additions = %lld\n", get_sharer_adds(mod));
+		fprintf(f, "Total number of single invals = %lld\n", get_one_sharer_removes(mod));
+		fprintf(f, "Total number of complete invals = %lld\n", get_complete_invals(mod));
+		fprintf(f, "==============================================================================================================\n");
+		fprintf(f, "\n\n");
+		/*Modification ends */
 	}
 
 	/* Dump report for networks */
